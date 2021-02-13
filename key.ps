@@ -1,0 +1,56 @@
+%% key.ps
+-80 -80 translate
+160 160 scale
+% This is the key for the graph.
+
+/box { newpath moveto 0 1 rlineto 2 0 rlineto 0 -1 rlineto closepath } def
+/key { setrgbcolor 2 copy box gsave fill grestore 0 0 0 setrgbcolor strokepath fill moveto 2.4 0.25 rmoveto show } def
+
+/Helvetica-Oblique findfont
+1 scalefont setfont
+0.1 setlinewidth
+
+(static functions) 1 5 0.5 1 0.5 key % Light green.
+(indirectly called functions) 1 7 0 0.7 0 key % green
+(exported functions) 1 9 1 0 0 key % red
+(other functions) 1 11 0 0 1 key % blue
+
+1 3.25 moveto
+0.8 0.4 0.4 setrgbcolor
+/Helvetica findfont
+1 scalefont setfont
+(xxx) show
+1 3 moveto
+2.4 0.25 rmoveto
+0 0 0 setrgbcolor
+/Helvetica-Oblique findfont
+1 scalefont setfont
+(function name) show
+
+1 1.25 moveto
+0.8 0.4 0.4 setrgbcolor
+/Helvetica-Bold findfont
+1 scalefont setfont
+(xxx) show
+1 1 moveto
+2.4 0.25 rmoveto
+0 0 0 setrgbcolor
+/Helvetica-Oblique findfont
+1 scalefont setfont
+(source filename) show
+
+6 14 moveto
+/Helvetica-Bold findfont
+2 scalefont setfont
+(Key) show
+
+% Box around it
+newpath
+0.2 0.2 moveto
+0.2 16 lineto
+16 16 lineto
+16 0.2 lineto
+closepath
+strokepath fill
+
+% bound -1280 -1280 1280 1280

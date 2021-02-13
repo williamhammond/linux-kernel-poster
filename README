@@ -1,0 +1,56 @@
+This is a set of scripts to create a poster of the Linux kernel
+(v2.4.0 at the moment).  This process takes ~9 hours on my 400MHz
+Mobile Pentium II laptop.
+
+Thanks to Linuxcare for providing sustenance during coding.
+
+This entire archive is (c) Paul `Rusty' Russell, and placed under the
+GPL.
+
+To make the poster:
+1) make KERNEL_DIR=<<where-your-2.4.0-kernel-source-is>>
+
+	This will first extract all the functions from the kernel
+	source, into a directory called "image/".  This takes several
+	hours to run.
+
+	Then it will create a Makefile to generate the final image,
+	which it will then run.  This also takes several hours to run.
+
+2) Run posterize, like so:
+	./posterize a4 6
+
+   The first argument is the paper size (a4, a3, letter or 11x17), the second
+   is the size of the poster: this creates a poster of 6x6 A4 sheets.
+
+3) You will now have all the files called poster.1.1.ps.gz to
+   poster.6.6.ps.gz.  You will need to print them, something like so:
+	for f in poster*.gz; do zcat $f | lpr -; done
+
+4) From the `poster' man page:
+       Our  preferred  method  for  the assembly of a poster from
+       multiple sheets is as follows:
+
+       - Arrange the sheets in the proper order on a large  table
+         or on the floor.
+
+       - Remove  from  all sheets, except from those in the left-
+         most column or bottom row, their left and bottom cutmar-
+         gin.
+
+       - In left-to-right and bottom-to-top order, glue the right
+         (and top) cutmargin and  stick  the  right  (and  upper)
+         neighbouring page on top of that.
+
+       - Turn  the  glued-together  poster  face  bottom, and put
+         adhesive tape on the sheet edges (on the backside of the
+         poster) for more strength.
+
+       - Remove the remaining cutmargin around the poster.
+
+5) If this is all too hard, posters should soon be on sale at:
+
+	http://www.everythinglinux.com.au
+
+Enjoy your poster!
+Rusty.

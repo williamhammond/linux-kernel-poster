@@ -1,0 +1,178 @@
+#! /bin/sh
+# Take image.ps and produce a poster from it.
+# Much of this stolen from "poster", which didn't work with my dodgy
+# postscript.
+# This script is GPL. (c) 2001 Paul `Rusty' Russell.
+
+printusage()
+{
+    [ -n "$1" ] && echo "$1" >&2
+    echo 'Usage: posterize [letter|a4|a3|11x17] num-pages' >&2
+    echo ' eg. To produce a 6x6 poster of A4 pages: posterize a4 6' >&2
+    exit 1
+}
+
+[ $# = 2 ] || printusage
+
+# Thanks to the gs man page for papersizes (units in 1/72 inch)...
+case "$1" in
+    letter) PAPER_WIDTH=612; PAPER_HEIGHT=792;;
+    a4) PAPER_WIDTH=595; PAPER_HEIGHT=842;;
+    a3) PAPER_WIDTH=842; PAPER_HEIGHT=1190;;
+    a0) PAPER_WIDTH=2383; PAPER_HEIGHT=3369;;
+    11x17) PAPER_WIDTH=792; PAPER_HEIGHT=1224;;
+    # Add your paper here...
+    *) printusage "Unknown papersize $1.  Change, or edit script.";;
+esac
+
+if [ ! -f image.ps ]; then
+    echo 'You need to run "make" first.' >&2
+    exit 1
+fi
+
+# Check disk usage.  Each compressed ps takes ~40MB.
+# df returns something like:
+#   Filesystem           1k-blocks      Used Available Use% Mounted on
+#   /dev/hdb1             29561392  27655164    404556  99% /images
+SPACE=`df -k . | tail +2 | awk '{print $4}'`
+SPACE=`expr $SPACE / 1000`
+if [ `expr $SPACE` -lt `expr $2 \* $2 \* 40` ]; then
+    echo "Need `expr $2 \* $2 \* 40` MB free for ${2}x$2 poster; seem to have $SPACE MB." >&2
+    echo "Aborting" >&2
+    exit 1
+fi
+
+# Image bounding box is at bottom, eg: % bound -344.30 -344.30 344.30 344.30
+LEFT_BOUND=`tail -1 image.ps | awk '{ print $3 }'`
+LOWER_BOUND=`tail -1 image.ps | awk '{ print $4 }'`
+RIGHT_BOUND=`tail -1 image.ps | awk '{ print $5 }'`
+UPPER_BOUND=`tail -1 image.ps | awk '{ print $6 }'`
+
+WIDTH=`echo scale=5\; $RIGHT_BOUND - $LEFT_BOUND | bc`
+HEIGHT=`echo scale=5\; $UPPER_BOUND - $LOWER_BOUND | bc`
+
+# We get to use 90% of the total size.
+TOTAL_WIDTH=`echo scale=5\; $2 \* $PAPER_WIDTH \* 0.90000 | bc`
+TOTAL_HEIGHT=`echo scale=5\; $2 \* $PAPER_HEIGHT \* 0.90000 | bc`
+
+HEIGHT_SCALE=`echo scale=5\; $TOTAL_HEIGHT / $HEIGHT | bc`
+WIDTH_SCALE=`echo scale=5\; $TOTAL_WIDTH / $WIDTH | bc`
+# We choose the minimum of the two scales.
+if [ `echo $HEIGHT_SCALE \> $WIDTH_SCALE | bc` == 1 ]; then
+    SCALE=$WIDTH_SCALE
+else
+    SCALE=$HEIGHT_SCALE
+fi
+
+# 5% for margins.
+LEFT_MARGIN=`echo $PAPER_WIDTH \* 0.05 | bc`
+BOTTOM_MARGIN=`echo $PAPER_HEIGHT \* 0.05 | bc`
+
+x=1
+while [ $x -le $2 ]; do
+    y=1
+    while [ $y -le $2 ]; do
+	echo Generating poster.$x.$y.ps.gz...
+	(echo "%!PS-Adobe-1.0"
+	 echo "%%DocumentFonts: Helvetica Helvetica-Bold"
+	 echo "%%Title: Linux 2.4.0 Kernel Poster ($x x $y of $2 x $2)"
+	 echo "%%Creator: Rusty's scripts and postersize (GPL)"
+	 echo "%%CreationDate: `date`"
+	 echo "%%Pages: 1"
+	 echo "%%BoundingBox: 0 0 `expr $PAPER_WIDTH - 1` `expr $PAPER_HEIGHT - 1`"
+	 echo "%%EndComments"
+	 # Draw the clipping stuff.
+	 cat <<EOF
+/sfactor $SCALE def
+/leftmargin $LEFT_MARGIN def
+/botmargin $BOTTOM_MARGIN def
+/pagewidth `echo $PAPER_WIDTH - 2 \* $LEFT_MARGIN | bc` def
+/pageheight `echo $PAPER_HEIGHT - 2 \* $BOTTOM_MARGIN | bc` def
+/imagexl 0 def
+/imageyb 0 def
+/posterxl 0 def
+/posteryb 0 def
+/do_turn false def
+/strg 10 string def
+/clipmargin 6 def
+/labelsize 9 def
+/cutmark	% - cutmark -
+{		% draw cutline
+	0.23 setlinewidth 0 setgray
+	clipmargin
+	dup 0 moveto
+	dup neg leftmargin add 0 rlineto stroke
+	% draw sheet alignment mark
+	dup dup neg moveto
+	dup 0 rlineto
+	dup dup lineto
+	0 rlineto
+	closepath fill
+} bind def
+
+% Tile contents
+$x
+$y
+
+/colcount exch def
+/rowcount exch def
+
+% print the cutmarks
+gsave
+leftmargin botmargin translate
+pagewidth pageheight translate cutmark 90 rotate cutmark
+0 pagewidth translate cutmark 90 rotate cutmark
+0 pageheight translate cutmark 90 rotate cutmark
+0 pagewidth translate cutmark 90 rotate cutmark
+% print the page label
+0 setgray
+leftmargin clipmargin 3 mul add clipmargin labelsize add neg botmargin add moveto
+/Helvetica findfont labelsize scalefont setfont
+(Grid \( ) show
+rowcount strg cvs show
+( , ) show
+colcount strg cvs show
+( \)) show
+grestore
+
+gsave
+leftmargin botmargin translate
+do_turn {exch} if
+% clip page contents
+clipmargin neg dup moveto
+pagewidth clipmargin 2 mul add 0 rlineto
+0 pageheight clipmargin 2 mul add rlineto
+pagewidth clipmargin 2 mul add neg 0 rlineto
+closepath clip
+% set page contents transformation
+do_turn
+{	pagewidth 0 translate
+	90 rotate
+} if
+pagewidth colcount 1 sub mul neg
+pageheight rowcount 1 sub mul neg
+do_turn {exch} if
+translate
+posterxl posteryb translate
+sfactor dup scale
+imagexl neg imageyb neg translate
+0 setgray 0 setlinecap 1 setlinewidth
+0 setlinejoin 10 setmiterlimit [] 0 setdash newpath
+
+`echo $LEFT_BOUND \* -1 | bc` `echo $LOWER_BOUND \* -1 | bc` translate
+gsave
+EOF
+	 echo "%%EndProlog"
+	 echo "%%Page 0 1"
+	 # Paste in actual image.
+	 dd bs=1000 if=image.ps 2>/dev/null
+	 echo "%%Trailer"
+	 echo "grestore"
+	 echo "showpage") | gzip > poster.$x.$y.ps.gz
+	 y=`expr $y + 1`
+    done
+    x=`expr $x + 1`
+done
+
+echo Poster completed!
+exit 0

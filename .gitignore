@@ -1,0 +1,7 @@
+*.gz
+poster.*
+image/
+*.png
+*.jpg
+*.jpeg
+.idea/*
